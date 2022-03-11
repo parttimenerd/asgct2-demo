@@ -1,7 +1,7 @@
 # AsyncGetCallTrace Extension Demo
 
 This project show cases the ideas behind the drafted extension of the AsyncGetCallTrace
-call and combines the modified [JDK](https://github.com/parttimenerd/jdk/tree/parttimenerd_asgct2)
+call and combines a [OpenJDK fork](https://github.com/parttimenerd/jdk/tree/parttimenerd_asgct2)
 and the related [async-profiler fork](https://github.com/SAP/async-profiler/tree/parttimenerd_asgct2)
 which uses the API.
 
@@ -23,9 +23,10 @@ For example, to run a [dacapo](https://github.com/dacapobench/dacapobench) bench
 ```sh
 test -e dacapo.jar || wget https://downloads.sourceforge.net/project/dacapobench/9.12-bach-MR1/dacapo-9.12-MR1-bach.jar -O dacapo.jar
 
-./run.sh flat=10,traces=1,interval=0.5ms,event=cpu,flamegraph,file=flame.html -jar dacapo.jar jython
+./run.sh flat=10,traces=1,interval=500us,event=cpu,flamegraph,file=flame.html -jar dacapo.jar jython
 ```
-*with an interval of 0.5ms, more information on the arguments in the [async-profiler](https://github.com/SAP/async-profiler/tree/parttimenerd_asgct2)*
+*With an interval of 500us (0.5ms), more information on the arguments in the [async-profiler](https://github.com/SAP/async-profiler/tree/parttimenerd_asgct2).
+Use another benchmark like tomcat instead of jython, if the flamegraph misses the bottom frames.*
 
 This results in a flamegraph like (click on the image to get to the HTML flamegraph):
 
