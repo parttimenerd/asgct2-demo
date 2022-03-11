@@ -29,7 +29,7 @@ For example, to run a [dacapo](https://github.com/dacapobench/dacapobench) bench
 
 This results in a flamegraph like:
 
-![img/jython.png]
+![Crop of the generated flamegraph for jython dacapo benchmark](img/jython.png)
 
 The usage of the new draft AsyncGetCallTrace gives us the following additions to a normal
 async-profiler flamegraph: Information on the compilation stage (C1 vs C2 compiler),
