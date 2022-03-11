@@ -27,9 +27,9 @@ test -e dacapo.jar || wget https://downloads.sourceforge.net/project/dacapobench
 ```
 *with an interval of 0.5ms, more information on the arguments in the [async-profiler](https://github.com/SAP/async-profiler/tree/parttimenerd_asgct2)*
 
-This results in a flamegraph like:
+This results in a flamegraph like (click on the image to get to the HTML flamegraph):
 
-![Crop of the generated flamegraph for jython dacapo benchmark](img/jython.png)
+[![Crop of the generated flamegraph for jython dacapo benchmark](img/jython.png)](https://htmlpreview.github.io/?https://github.com/parttimenerd/asgct2-demo/blob/main/img/jython.html)
 
 The usage of the new draft AsyncGetCallTrace gives us the following additions to a normal
 async-profiler flamegraph: Information on the compilation stage (C1 vs C2 compiler),
@@ -37,12 +37,9 @@ inlining information for non-top frames and the c frames starting with `_pthread
 upto the first Java frames. This information was previously unobtainable by async-profiler
 (or any other profiler using just JFR or AsyncGetCallTrace).
 
-The same flamegraph without using the new call:
-
-![Crop of the generated flamegraph for jython dacapo benchmark using the old AsyncGetCallTrace](img/jython_old.png)
-
-*it actually uses a slightly modified version of [async-profiler](https://github.com/SAP/async-profiler/tree/distinguish_inlined_frames2)
-that includes the hover texts but does not differ in functionality from the current async-profiler version.*
+The same flamegraph using the old AsyncGetCallTrace can be found [here](img/jython_old.png) 
+(using [async-profiler](https://github.com/SAP/async-profiler/tree/distinguish_inlined_frames2)
+that includes the hover texts).
 
 
 ## Technical stuff
