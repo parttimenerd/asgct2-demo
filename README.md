@@ -1,6 +1,6 @@
 # AsyncGetCallTrace Extension Demo
 
-This project show cases the ideas behind the drafted extension of the AsyncGetCallTrace
+This project showcases the ideas behind the drafted extension of the AsyncGetCallTrace
 call and combines the modified [JDK](https://github.com/parttimenerd/jdk/tree/parttimenerd_asgct2)
 and the related [async-profiler fork](https://github.com/SAP/async-profiler/tree/parttimenerd_asgct2)
 which uses the API.
