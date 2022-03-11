@@ -15,4 +15,4 @@ cd $(dirname "$SCRIPT_PATH")
 export JAVA_HOME=`echo jdk/build/*/images/jdk`
 export PATH="$JAVA_HOME/bin:$PATH"
 
-java -agentpath:./async-profiler/build/libasyncProfiler.so=start,$1 -XX:+UnlockDiagnosticVMOptions ${@:2}
+java -agentpath:./async-profiler/build/libasyncProfiler.so=start,$1 -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints ${@:2}

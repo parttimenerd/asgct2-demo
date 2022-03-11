@@ -1,4 +1,4 @@
-# AsyncGetCallTrace2 Demo
+# AsyncGetCallTrace Extension Demo
 
 This project show cases the ideas behind the drafted extension of the AsyncGetCallTrace
 call and combines the modified [JDK](https://github.com/parttimenerd/jdk/tree/parttimenerd_asgct2)
@@ -21,9 +21,9 @@ see related error messages if you don't).
 For example, to run a [dacapo](https://github.com/dacapobench/dacapobench) benchmark, e.g jython, and generate a flamegraph run
 
 ```sh
-  test -e dacapo.jar || wget https://downloads.sourceforge.net/project/dacapobench/9.12-bach-MR1/dacapo-9.12-MR1-bach.jar -O dacapo.jar
+test -e dacapo.jar || wget https://downloads.sourceforge.net/project/dacapobench/9.12-bach-MR1/dacapo-9.12-MR1-bach.jar -O dacapo.jar
 
-  ./run.sh flat=10,traces=1,interval=0.5ms,event=cpu,flamegraph,file=flame.html -jar dacapo.jar jython
+./run.sh flat=10,traces=1,interval=0.5ms,event=cpu,flamegraph,file=flame.html -jar dacapo.jar jython
 ```
 *with an interval of 0.5ms, more information on the arguments in the [async-profiler](https://github.com/SAP/async-profiler/tree/parttimenerd_asgct2)*
 
@@ -34,7 +34,16 @@ This results in a flamegraph like:
 The usage of the new draft AsyncGetCallTrace gives us the following additions to a normal
 async-profiler flamegraph: Information on the compilation stage (C1 vs C2 compiler),
 inlining information for non-top frames and the c frames starting with `_pthread_start`
-upto the first Java frames.
+upto the first Java frames. This information was previously unobtainable by async-profiler
+(or any other profiler using just JFR or AsyncGetCallTrace).
+
+The same flamegraph without using the new call:
+
+![Crop of the generated flamegraph for jython dacapo benchmark using the old AsyncGetCallTrace](img/jython_old.png)
+
+*it actually uses a slightly modified version of [async-profiler](https://github.com/SAP/async-profiler/tree/distinguish_inlined_frames2)
+that includes the hover texts but does not differ in functionality from the current async-profiler version.*
+
 
 ## Technical stuff
 
@@ -51,5 +60,4 @@ upto the first Java frames.
   - gives information on all frames, not just java frames 
   - propose data structure
   - current data structure (required less modifications in async-profiler)
-
-  Overall changes can be found on [GitHub](https://github.com/openjdk/jdk/compare/master...parttimenerd:parttimenerd_asgct2?expand=1)
+- give remarks on changed files
