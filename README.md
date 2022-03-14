@@ -14,13 +14,13 @@ and build the async-profiler in the folder
 Be sure to install the required dependencies (you will probably
 see related error messages if you don't).
 
-*It is based on OpenJDK head but the changes should be easy to backport to previous version.*
+*It is based on OpenJDK head but the changes should be easy to backport to previous versions.*
 
 ## Demo script
 
 `./run.sh AGENT_ARGS JAVA_ARGS...` which uses the built JDK and async-profiler.
 
-For example, to run a [dacapo](https://github.com/dacapobench/dacapobench) benchmark, e.g jython, and generate a flamegraph run
+For example, to run a [dacapo](https://github.com/dacapobench/dacapobench) benchmark, e.g jython, and generate a flame graph run
 
 ```sh
 test -e dacapo.jar || wget https://downloads.sourceforge.net/project/dacapobench/9.12-bach-MR1/dacapo-9.12-MR1-bach.jar -O dacapo.jar
@@ -28,19 +28,19 @@ test -e dacapo.jar || wget https://downloads.sourceforge.net/project/dacapobench
 ./run.sh flat=10,traces=1,interval=500us,event=cpu,flamegraph,file=flame.html -jar dacapo.jar jython
 ```
 *With an interval of 500us (0.5ms), more information on the arguments in the [async-profiler](https://github.com/SAP/async-profiler/tree/parttimenerd_asgct2).
-Use another benchmark like tomcat instead of jython, if the flamegraph misses the bottom frames.*
+Use another benchmark like tomcat instead of jython, if the flame graph misses the bottom frames.*
 
-This results in a flamegraph like (click on the image to get to the HTML flamegraph):
+This results in a flame graph like (click on the image to get to the HTML flame graph):
 
-[![Crop of the generated flamegraph for jython dacapo benchmark](img/jython.png)](https://htmlpreview.github.io/?https://github.com/parttimenerd/asgct2-demo/blob/main/img/jython.html)
+[![Crop of the generated flame graph for jython dacapo benchmark](img/jython.png)](https://htmlpreview.github.io/?https://github.com/parttimenerd/asgct2-demo/blob/main/img/jython.html)
 
 The usage of the new draft AsyncGetCallTrace gives us the following additions to a normal
-async-profiler flamegraph: Information on the compilation stage (C1 vs C2 compiler),
-inlining information for non-top frames and the c frames starting with `_pthread_start`
-upto the first Java frames. This information was previously unobtainable by async-profiler
+async-profiler flame graph: Information on the compilation stage (C1 vs C2 compiler),
+inlining information for non-top frames, and the c frames starting with `_pthread_start`
+up to the first Java frame. This information was previously unobtainable by async-profiler
 (or any other profiler using just JFR or AsyncGetCallTrace).
 
-The same flamegraph using the old AsyncGetCallTrace can be found [here](img/jython_old.png) 
+The same flame graph using the old AsyncGetCallTrace can be found [here](img/jython_old.png) 
 (using [async-profiler](https://github.com/SAP/async-profiler/tree/distinguish_inlined_frames2)
 that includes the hover texts).
 
@@ -49,41 +49,40 @@ that includes the hover texts).
 
 I propose to
 
-1. Replace stack walking in error and profiling contexts with unified API
-2. Create a new AsyncGetCallTrace extension with Classpath Exception and more information on frames
+1. Replace duplicated stack walking code with unified API
+3. Create a new AsyncGetCallTrace extension with Classpath Exception and more information on frames
 
 ### Replace stack walking
 
 There are currently multiple implementations of stack walking in JFR and for AsyncGetCallTrace. 
 They each implement their own extension of vframeStream but with comparable features
-and check for problematic frames. The problem is the duplication that already lead to
-error checks being implemented in only one of them. 
+and check for problematic frames.
 
 My proposal is therefore to replace the stack walking code with a unified API that
 includes all error checking and vframeStream extensions in a single place.
 The prosposed new class is called StackWalker and could be part of
-`jfr/recorder/stacktrace` [StackWalker]. 
+`jfr/recorder/stacktrace` [1]. 
 This class also supports getting information on C frames so it can be potentially
 used for walking stacks in VMError (used to create hs_err files), further
 reducing the amount of different stack walking code.
 
 ### AsyncGetCallTrace extension
 
-The AsyncGetCallTrace call has seen increasing use in the recent years.
+The AsyncGetCallTrace call has seen increasing use in recent years.
 But its licensing makes it hard to properly integrate in Open Source
-softare and the information on frames it returns is pretty limited 
+software and the information on frames it returns is pretty limited 
 (only the method and bci for Java frames) which makes implementing
-profilers and other tooling harder. Tools (like AsyncProfiler)
+profilers and other tooling harder. Tools (like async-profiler)
 have to resort to complicated code to partially obtain the information
 that the JVM already has.
 
-The licensing issue can be solving by licensing the new API with
+The licensing issue can be solved by licensing the new API with
 a ClassPath Exception. Furthermore, using the proposed StackWalker
 class, implementing a new API that returns more information on frames
 is possible with a small amount of code.
 
 The working title for the new extension is "AsyncGetCallTrace2" 
-currently placed share/prims/asgct2 [asgct2].
+currently placed `share/prims/asgct2` [2].
 The following describes the proposed API:
 
 ```
@@ -130,7 +129,7 @@ enum FrameTypeId {
 };
 ```
 
-The `CompLevel` is the compilation level defined in compiler/compilerDefinitions:
+The `CompLevel` is the compilation level defined in `compiler/compilerDefinitions`:
 
 ```cpp
 // Enumeration to distinguish tiers of compilation
@@ -147,11 +146,9 @@ enum CompLevel {
 
 The traces produced by this prototype are fairly large
 (each frame requires 22 is instead of 12 bytes). The reason
-for this is that it simplified the extension of AsyncProfiler.
+for this is that it simplified the extension of async-profiler.
 
-But packing the information is of course possible, especially
-when we consider that the `methodID` field is only used for
-Java frames and that the `machinepc` is only used for non Java frames:
+But packing the information is of course possible:
 
 ```
 enum FrameTypeId {
@@ -180,8 +177,8 @@ typedef union {
 } ASGCT_CallFrame2;
 ```
 
-This uses the same amount of space per frame as the original but encodes far more information.
+This uses the same amount of space per frame (12 bytes) as the original but encodes far more information.
 
-[StackWalker] https://github.com/parttimenerd/jdk/blob/parttimenerd_asgct2/src/hotspot/share/jfr/recorder/stacktrace/stackWalker.hpp
+[1] https://github.com/parttimenerd/jdk/blob/parttimenerd_asgct2/src/hotspot/share/jfr/recorder/stacktrace/stackWalker.hpp
 
-[asgct2] https://github.com/parttimenerd/jdk/blob/parttimenerd_asgct2/src/hotspot/share/prims/asgct2.cpp
+[2] https://github.com/parttimenerd/jdk/blob/parttimenerd_asgct2/src/hotspot/share/prims/asgct2.cpp
