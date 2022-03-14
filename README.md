@@ -151,24 +151,16 @@ for this is that it simplified the extension of async-profiler.
 But packing the information is of course possible:
 
 ```
-enum FrameTypeId {
-    FRAME_CPP         = 0,
-    FRAME_JIT         = 1,
-    FRAME_INLINE      = 2,
-    FRAME_INTERPRETED = 3
-};
-
 typedef struct {         
   jmethodID method_id;
-  jint bci;            // 0 < bci < 65536   // 0 encoding non Java frames
+  uint16_t bci;            // 0 < bci < 65536
   FrameTypeId type : 8;
   CompLevel comp_level: 8;
 } JavaFrame;
 
 typedef struct {
   void *machine_pc
-  FrameTypeId type: 8; // = 0
-  bool native_frame;
+  FrameTypeId type: 8;
 } CFrame;
 
 typedef union {
