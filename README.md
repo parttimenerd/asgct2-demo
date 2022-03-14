@@ -155,7 +155,7 @@ for this is that it simplified the extension of async-profiler.
 
 But packing the information is of course possible:
 
-```
+```cpp
 typedef struct {         
   jmethodID method_id;
   uint16_t bci;            // 0 < bci < 65536
