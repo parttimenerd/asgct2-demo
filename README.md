@@ -5,6 +5,11 @@ call and combines the modified [JDK](https://github.com/parttimenerd/jdk/tree/pa
 and the related [async-profiler fork](https://github.com/SAP/async-profiler/tree/parttimenerd_asgct2)
 which uses the API.
 
+## TLDR
+I propose 
+- [to unify all profiling related stack walking in a new class](#replace-stack-walking) (less code duplication and more error checking)
+- [the extension of AsyncGetCallTrace (AsyncGetCallTrace2)](#asyncgetcalltrace-extension) with a Class Path exception and more information on Java and non Java frames
+
 ## Build
 
 Either build the JDK in the folder `jdk` as you would usually do
@@ -16,7 +21,7 @@ see related error messages if you don't).
 
 *It is based on OpenJDK head but the changes should be easy to backport to previous versions.*
 
-## Demo script
+## Demo Script
 
 `./run.sh AGENT_ARGS JAVA_ARGS...` which uses the built JDK and async-profiler.
 
@@ -52,7 +57,7 @@ I propose to
 1. Replace duplicated stack walking code with unified API
 3. Create a new AsyncGetCallTrace extension with Classpath Exception and more information on frames
 
-### Replace stack walking
+### Replace Stack Walking
 
 There are currently multiple implementations of stack walking in JFR and for AsyncGetCallTrace. 
 They each implement their own extension of vframeStream but with comparable features
@@ -66,7 +71,7 @@ This class also supports getting information on C frames so it can be potentiall
 used for walking stacks in VMError (used to create hs_err files), further
 reducing the amount of different stack walking code.
 
-### AsyncGetCallTrace extension
+### AsyncGetCallTrace Extension
 
 The AsyncGetCallTrace call has seen increasing use in recent years.
 But its licensing makes it hard to properly integrate in Open Source
