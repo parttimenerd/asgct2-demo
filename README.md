@@ -7,7 +7,7 @@ which uses the API.
 
 ## TLDR
 I propose 
-- [to unify all profiling related stack walking in a new class](#replace-stack-walking) (less code duplication and more error checking)
+- [to unify all profiling related stack walking in a new class](#unify-stack-walking) (less code duplication and more error checking)
 - [the extension of AsyncGetCallTrace (AsyncGetCallTrace2)](#asyncgetcalltrace-extension) with a Class Path exception and more information on Java and non Java frames
 
 ## Build
@@ -57,7 +57,7 @@ I propose to
 1. Replace duplicated stack walking code with unified API
 3. Create a new AsyncGetCallTrace extension with Classpath Exception and more information on frames
 
-### Replace Stack Walking
+### Unify Stack Walking
 
 There are currently multiple implementations of stack walking in JFR and for AsyncGetCallTrace. 
 They each implement their own extension of vframeStream but with comparable features
@@ -90,7 +90,7 @@ The working title for the new extension is "AsyncGetCallTrace2"
 currently placed `share/prims/asgct2` [2].
 The following describes the proposed API:
 
-```
+```cpp
 void AsyncGetCallTrace2(ASGCT_CallTrace2 *trace, jint depth, void* ucontext);**
 ```
 
