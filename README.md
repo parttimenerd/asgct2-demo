@@ -88,10 +88,11 @@ The `FrameTypeId` is based on the frame type in JFRStackFrame:
 ```cpp
 enum class FrameTypeId : uint8_t {
   FRAME_INTERPRETED = 0, 
-  FRAME_JIT         = 1,
+  FRAME_JIT         = 1, // JIT compiled
   FRAME_INLINE      = 2, // inlined JITed methods
   FRAME_NATIVE      = 3, // native wrapper to call C methods from Java
-  FRAME_CPP         = 4
+  FRAME_CPP         = 4, // c/c++/... frames
+  FRAME_STUB        = 5  // VM internal stub frames
 };
 ```
 
