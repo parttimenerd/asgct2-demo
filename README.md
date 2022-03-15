@@ -91,8 +91,7 @@ enum class FrameTypeId : uint8_t {
   FRAME_JIT         = 1, // JIT compiled
   FRAME_INLINE      = 2, // inlined JITed methods
   FRAME_NATIVE      = 3, // native wrapper to call C methods from Java
-  FRAME_CPP         = 4, // c/c++/... frames
-  FRAME_STUB        = 5  // VM internal stub frames
+  FRAME_CPP         = 4  // c/c++/... frames, stub frames have CompLevel_all
 };
 ```
 
