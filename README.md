@@ -8,7 +8,7 @@ which uses the API.
 ## TLDR
 I propose 
 - [to unify all profiling related stack walking in a new class](#unify-stack-walking) (less code duplication and more error checking)
-- [the extension of AsyncGetCallTrace (AsyncGetCallTrace2)](#asyncgetcalltrace-extension) with a Class Path exception and more information on Java and non Java frames
+- [the extension of AsyncGetCallTrace (AsyncGetCallTrace2)](#asyncgetcalltrace-extension) with more information on Java and non Java frames
 
 ## Build
 
@@ -55,7 +55,7 @@ that includes the hover texts).
 I propose to
 
 1. Replace duplicated stack walking code with unified API
-3. Create a new AsyncGetCallTrace extension with Classpath Exception and more information on frames
+3. Create a new AsyncGetCallTrace extension with more information on frames
 
 ### Unify Stack Walking
 
@@ -74,15 +74,13 @@ reducing the amount of different stack walking code.
 ### AsyncGetCallTrace Extension
 
 The AsyncGetCallTrace call has seen increasing use in recent years.
-But its licensing makes it hard to properly integrate in Open Source
-software and the information on frames it returns is pretty limited 
+But the information on frames it returns is pretty limited 
 (only the method and bci for Java frames) which makes implementing
 profilers and other tooling harder. Tools (like async-profiler)
 have to resort to complicated code to partially obtain the information
 that the JVM already has.
 
-The licensing issue can be solved by licensing the new API with
-a ClassPath Exception. Furthermore, using the proposed StackWalker
+Using the proposed StackWalker
 class, implementing a new API that returns more information on frames
 is possible with a small amount of code.
 
@@ -126,10 +124,10 @@ The `FrameTypeId` is based on the frame type in JFRStackFrame:
 
 ```cpp
 enum FrameTypeId {
-  FRAME_INTERPRETED = 0,
+  FRAME_INTERPRETED = 0, 
   FRAME_JIT         = 1,
-  FRAME_INLINE      = 2,
-  FRAME_NATIVE      = 3,
+  FRAME_INLINE      = 2, // inlined JITed methods
+  FRAME_NATIVE      = 3, // native wrapper to call C methods from Java
   FRAME_CPP         = 4
 };
 ```
