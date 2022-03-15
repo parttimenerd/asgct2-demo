@@ -25,7 +25,8 @@ reducing the amount of different stack walking code.
 
 The AsyncGetCallTrace call has seen increasing use in recent years
 in profilers like async-profiler.
-But the information on frames it returns is pretty limited 
+But it is not really an API (not exported in any header) and
+the information on frames it returns is pretty limited 
 (only the method and bci for Java frames) which makes implementing
 profilers and other tooling harder. Tools like async-profiler
 have to resort to complicated code to partially obtain the information
