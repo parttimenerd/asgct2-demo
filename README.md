@@ -13,10 +13,10 @@ There are currently multiple implementations of stack walking in JFR and for Asy
 They each implement their own extension of vframeStream but with comparable features
 and check for problematic frames.
 
-My proposal is therefore to replace the stack walking code with a unified API that
+My proposal is, therefore, to replace the stack walking code with a unified API that
 includes all error checking and vframeStream extensions in a single place.
 The prosposed new class is called StackWalker and could be part of
-`jfr/recorder/stacktrace` [1]. 
+`jfr/recorder/stacktrace` [1].
 This class also supports getting information on C frames so it can be potentially
 used for walking stacks in VMError (used to create hs_err files), further
 reducing the amount of different stack walking code.
@@ -33,7 +33,7 @@ have to resort to complicated code to partially obtain the information
 that the JVM already has.
 Information that is currently hidden and impossible to obtain is
 
-- whether a compiled frame is inlined (currently only obtainable for the top most compiled frames)
+- whether a compiled frame is inlined (currently only obtainable for the topmost compiled frames)
   -  although this can be obtained using JFR 
 - C frames that are not at the top of the stack
 - compilation level (C1 or C2 compiled)
@@ -44,7 +44,7 @@ JNI heavily.
 
 Using the proposed StackWalker class, implementing a new API 
 that returns more information on frames is possible 
-as thin wrapper over the StackWalker API [2]. 
+as a thin wrapper over the StackWalker API [2]. 
 This also improves the maintainability as the code used
 in this API is used in multiple places and is therefore
 also better tested than the previous implementation, see 
@@ -108,7 +108,7 @@ enum FrameTypeId {
 
 The `comp_level` states the compilation level of the method related to the frame
 with higher numbers representing "more" compilation. `0` is defined as
-interpreted. It is modelled after the `CompLevel` enum in `compiler/compilerDefinitions`:
+interpreted. It is modeled after the `CompLevel` enum in `compiler/compilerDefinitions`:
 
 ```cpp
 // Enumeration to distinguish tiers of compilation
@@ -209,6 +209,8 @@ Use another benchmark like tomcat instead of jython, if the flame graph misses t
 This results in a flame graph like (click on the image to get to the HTML flame graph):
 
 [![Crop of the generated flame graph for jython dacapo benchmark](img/jython.png)](https://htmlpreview.github.io/?https://github.com/parttimenerd/asgct2-demo/blob/main/img/jython.html)
+
+*Orange frames are related to C/C++ internal JVM methods, red frames are related to other C/C++ code, darker green frames to interpreted methods, lighter green frames to compiled methods and blue frames to inlined compiled methods.*
 
 The usage of the new draft AsyncGetCallTrace gives us the following additions to a normal
 async-profiler flame graph: Information on the compilation stage (C1 vs C2 compiler),
