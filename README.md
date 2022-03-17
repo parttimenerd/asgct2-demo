@@ -116,7 +116,7 @@ the `CompLevel` enum in `compiler/compilerDefinitions`:
 // Enumeration to distinguish tiers of compilation
 enum CompLevel {
   CompLevel_any               = -1, // = 256  // Used for querying the state
-  CompLevel_all               = -1,        // Used for changing the state
+  CompLevel_all               = -1,        // Used for changing the state     // but used here for marking inlined
   CompLevel_none              = 0,         // Interpreter
   CompLevel_simple            = 1,         // C1
   CompLevel_limited_profile   = 2,         // C1, invocation & backedge counters
