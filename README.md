@@ -79,23 +79,25 @@ This akin to `compile_info` field in JVMTI's CompiledMethodLoad
 [3] and used for extending the information returned by the
 API later.
 
+### Protoype
+
 Currently `CallFrame` is implemented in the prototype [4] as
 
 ```cpp
 typedef struct {
+  void *machine_pc;           // program counter, for C and native frames (frames of native methods)
+  uint8_t type;               // frame type (single byte)
+  uint8_t comp_level;         // highest compilation level of a method related to a Java frame
+  // information from original CallFrame
   jint bci;                   // bci for Java frames
   jmethodID method_id;        // method ID for Java frames
-  // new information
-  void *machine_pc;           // program counter, for C and native frames (frames of native methods)
-  FrameTypeId type;           // frame type (single byte)
-  uint8_t comp_level;         // highest compilation level of a method related to a Java frame
 } CallFrame;
 ```
 
 The `FrameTypeId` is based on the frame type in JFRStackFrame:
 
 ```cpp
-enum class FrameTypeId : uint8_t {
+enum FrameTypeId {
   FRAME_INTERPRETED = 0, 
   FRAME_JIT         = 1, // JIT compiled
   FRAME_INLINE      = 2, // inlined JITed methods
@@ -122,17 +124,19 @@ enum CompLevel {
 ```
 
 The traces produced by this prototype are fairly large
-(each frame requires 22 is instead of 12 bytes) and some data is
+(each frame requires 24 is instead of 16 bytes on 64 bit systems) and some data is
 duplicated.
 The reason for this is that it simplified the extension of async-profiler
 for the prototype, as it only extends the data structures of
 the original AsyncGetCallTrace API.
 
+### Proposal
+
 But packing the information and reducing duplication is of course possible
 if we step away from the former constraint:
 
 ```cpp
-enum class FrameTypeId : uint8_t {
+enum FrameTypeId {
   FRAME_JAVA         = 1, // JIT compiled and interpreted
   FRAME_JAVA_INLINED = 2, // inlined JIT compiled
   FRAME_NATIVE       = 3, // native wrapper to call C methods from Java
@@ -141,26 +145,25 @@ enum class FrameTypeId : uint8_t {
 };
 
 typedef struct {     
-  FrameTypeId type;        // single byte type
-  uint8_t comp_level;      // with 256 stating this frame is inlined (and compiled)
+  uint8_t type;            // frame type
+  uint8_t comp_level;
   uint16_t bci;            // 0 < bci < 65536
   jmethodID method_id;
 } JavaFrame;               // used for FRAME_JAVA and FRAME_JAVA_INLINED
 
 typedef struct {
   FrameTypeId type;     // single byte type
-  uint8_t padding[3];   // padding so that machine_pc is 4 byte aligned
   void *machine_pc;
 } NonJavaFrame;         // used for FRAME_NATIVE, FRAME_STUB and FRAME_CPP
 
 typedef union {
-  FrameTypeId type;
+  FrameTypeId type;     // to distinguish between JavaFrame and NonJavaFrame
   JavaFrame java_frame;
   NonJavaFrame non_java_frame;
 } CallFrame;
 ```
 
-This uses the same amount of space per frame (12 bytes) as the original but encodes far more information.
+This uses the same amount of space per frame (16 bytes) as the original but encodes far more information.
 
 [1] https://github.com/parttimenerd/jdk/blob/parttimenerd_asgct2/src/hotspot/share/jfr/recorder/stacktrace/stackWalker.hpp
 
