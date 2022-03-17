@@ -7,7 +7,7 @@ I propose to
 
 Skip to the [Demo section](#demo) if you want to see a prototype of this proposal in action.
 
-### Unify Stack Walking
+## Unify Stack Walking
 
 There are currently multiple implementations of stack walking in JFR and for AsyncGetCallTrace. 
 They each implement their own extension of vframeStream but with comparable features
@@ -21,7 +21,7 @@ This class also supports getting information on C frames so it can be potentiall
 used for walking stacks in VMError (used to create hs_err files), further
 reducing the amount of different stack walking code.
 
-### AsyncGetCallTrace2
+## AsyncGetCallTrace2
 
 The AsyncGetCallTrace call has seen increasing use in recent years
 in profilers like async-profiler.
