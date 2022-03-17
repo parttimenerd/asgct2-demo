@@ -1,6 +1,6 @@
 [submodule "jdk"]
 	path = jdk
-	url = git@github.com:parttimenerd/jdk.git
+	url = https//github.com/parttimenerd/jdk
 	branch = parttimenerd_asgct2
 [submodule "async-profiler"]
 	path = async-profiler
