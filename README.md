@@ -3,7 +3,7 @@
 I propose to
 
 1. Replace duplicated stack walking code with unified API
-2. Create a new version of AsyncGetCallTrace, tentatively called "AsyncGetCallTrace2", with more information on frames using the unified API
+2. Create a new version of AsyncGetCallTrace, tentatively called "AsyncGetCallTrace2", with more information on more frames using the unified API
 
 Skip to the [Demo section](#demo) if you want to see a prototype of this proposal in action.
 
@@ -44,7 +44,7 @@ JNI heavily.
 
 Using the proposed StackWalker class, implementing a new API 
 that returns more information on frames is possible 
-as thin wrapper over the StackWalker API. 
+as thin wrapper over the StackWalker API [2]. 
 This also improves the maintainability as the code used
 in this API is used in multiple places and is therefore
 also better tested than the previous implementation, see 
@@ -64,23 +64,31 @@ values of `num_frames`.
 typedef struct {
   JNIEnv *env_id;                   // Env where trace was recorded
   jint num_frames;                  // number of frames in this trace
-  CallFrame *frames;               // frames
+  CallFrame *frames;                // frames
+  void* frame_info;                 // more information on frames
 } CallTrace;
 ```
 
 The only difference is that the `frames` array also contains
-information on C frames.
+information on C frames and the field `frame_info`.
+The `frame_info` is currently null and can later be used
+for extended information on each frame, being an array with
+an element for each frame. But the type of the
+elements in this array is implementation specific.
+This akin to `compile_info` field in JVMTI's CompiledMethodLoad 
+[3] and used for extending the information returned by the
+API later.
 
-Currently `CallFrame` is implemented in the prototype as
+Currently `CallFrame` is implemented in the prototype [4] as
 
 ```cpp
 typedef struct {
   jint bci;                   // bci for Java frames
   jmethodID method_id;        // method ID for Java frames
   // new information
-  void *machine_pc;            // program counter, for C and native frames (frames of native methods)
-  FrameTypeId type : 8;       // frame type (single byte)
-  CompLevel comp_level: 8;    // highest compilation level of a method related to a Java frame (one byte)
+  void *machine_pc;           // program counter, for C and native frames (frames of native methods)
+  FrameTypeId type;           // frame type (single byte)
+  uint8_t comp_level;         // highest compilation level of a method related to a Java frame
 } CallFrame;
 ```
 
@@ -96,12 +104,18 @@ enum class FrameTypeId : uint8_t {
 };
 ```
 
-The `CompLevel` is the compilation level defined in `compiler/compilerDefinitions`:
+The `comp_level` states the compilation level of the method related to the frame:
+There are two special level `256` represents the inlined level and `0`
+the interpreted level. On the inlined level, the method has the same
+compilation level as the calling method.
+All levels between give the level of compilation where
+higher numbers represent more compilation. It is modelled after 
+the `CompLevel` enum in `compiler/compilerDefinitions`:
 
 ```cpp
 // Enumeration to distinguish tiers of compilation
 enum CompLevel {
-  CompLevel_any               = -1,        // Used for querying the state
+  CompLevel_any               = -1, // = 256  // Used for querying the state
   CompLevel_all               = -1,        // Used for changing the state
   CompLevel_none              = 0,         // Interpreter
   CompLevel_simple            = 1,         // C1
@@ -112,27 +126,40 @@ enum CompLevel {
 ```
 
 The traces produced by this prototype are fairly large
-(each frame requires 22 is instead of 12 bytes). The reason
-for this is that it simplified the extension of async-profiler.
+(each frame requires 22 is instead of 12 bytes) and some data is
+duplicated.
+The reason for this is that it simplified the extension of async-profiler
+for the prototype, as it only extends the data structures of
+the original AsyncGetCallTrace API.
 
-But packing the information is of course possible:
+But packing the information and reducing duplication is of course possible
+if we step away from the former constraint:
 
 ```cpp
-typedef struct {         
-  jmethodID method_id;
+enum class FrameTypeId : uint8_t {
+  FRAME_JAVA        = 1, // JIT compiled and interpreted
+  FRAME_NATIVE      = 2, // native wrapper to call C methods from Java
+  FRAME_STUB        = 3, // VM generated stubs
+  FRAME_CPP         = 4  // c/c++/... frames
+};
+
+typedef struct {     
+  FrameTypeId type;        // single byte type
+  uint8_t comp_level;      // with 256 stating this frame is inlined (and compiled)
   uint16_t bci;            // 0 < bci < 65536
-  FrameTypeId type : 8;
-  CompLevel comp_level: 8;
+  jmethodID method_id;
 } JavaFrame;
 
 typedef struct {
-  void *machine_pc
-  FrameTypeId type: 8;
-} CFrame;
+  FrameTypeId type;     // single byte type
+  uint8_t padding[3];   // padding so that machine_pc is 4 byte aligned
+  void *machine_pc;
+} NonJavaFrame;         // used for FRAME_NATIVE, FRAME_STUB and FRAME_CPP
 
 typedef union {
+  FrameTypeId type;
   JavaFrame java_frame;
-  CFrame c_frame;
+  NonJavaFrame non_java_frame;
 } CallFrame;
 ```
 
@@ -140,9 +167,11 @@ This uses the same amount of space per frame (12 bytes) as the original but enco
 
 [1] https://github.com/parttimenerd/jdk/blob/parttimenerd_asgct2/src/hotspot/share/jfr/recorder/stacktrace/stackWalker.hpp
 
-[2] https://github.com/parttimenerd/jdk/blob/parttimenerd_asgct2/src/hotspot/share/prims/asgct2.cpp
+[2] https://github.com/parttimenerd/jdk/blob/parttimenerd_asgct2/src/hotspot/share/prims/asgct2.cpp****
 
-[3] https://github.com/parttimenerd/jdk/blob/parttimenerd_asgct2/src/hotspot/share/prims/asgct2.hpp
+[3] https://docs.oracle.com/javase/8/docs/platform/jvmti/jvmti.html#CompiledMethodLoad
+
+[4] https://github.com/parttimenerd/jdk/blob/parttimenerd_asgct2/src/hotspot/share/prims/asgct2.hpp
 
 
 ## Demo
