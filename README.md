@@ -113,8 +113,7 @@ interpreted. It is modeled after the `CompLevel` enum in `compiler/compilerDefin
 ```cpp
 // Enumeration to distinguish tiers of compilation
 enum CompLevel {
-  CompLevel_any               = -1, // = 256  // Used for querying the state  // not used
-  CompLevel_all               = -1,        // Used for changing the state     // not used
+  // ...
   CompLevel_none              = 0,         // Interpreter
   CompLevel_simple            = 1,         // C1
   CompLevel_limited_profile   = 2,         // C1, invocation & backedge counters
@@ -128,7 +127,7 @@ The traces produced by this prototype are fairly large
 duplicated.
 The reason for this is that it simplified the extension of async-profiler
 for the prototype, as it only extends the data structures of
-the original AsyncGetCallTrace API.
+the original AsyncGetCallTrace API without changing the original fields.
 
 ### Proposal
 
