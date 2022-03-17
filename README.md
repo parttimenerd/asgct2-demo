@@ -104,19 +104,15 @@ enum class FrameTypeId : uint8_t {
 };
 ```
 
-The `comp_level` states the compilation level of the method related to the frame:
-There are two special level `256` represents the inlined level and `0`
-the interpreted level. On the inlined level, the method has the same
-compilation level as the calling method.
-All levels between give the level of compilation where
-higher numbers represent more compilation. It is modelled after 
-the `CompLevel` enum in `compiler/compilerDefinitions`:
+The `comp_level` states the compilation level of the method related to the frame
+with higher numbers representing "more" compilation. `0` is defined as
+interpreted. It is modelled after the `CompLevel` enum in `compiler/compilerDefinitions`:
 
 ```cpp
 // Enumeration to distinguish tiers of compilation
 enum CompLevel {
-  CompLevel_any               = -1, // = 256  // Used for querying the state
-  CompLevel_all               = -1,        // Used for changing the state     // but used here for marking inlined
+  CompLevel_any               = -1, // = 256  // Used for querying the state  // not used
+  CompLevel_all               = -1,        // Used for changing the state     // not used
   CompLevel_none              = 0,         // Interpreter
   CompLevel_simple            = 1,         // C1
   CompLevel_limited_profile   = 2,         // C1, invocation & backedge counters
@@ -137,10 +133,11 @@ if we step away from the former constraint:
 
 ```cpp
 enum class FrameTypeId : uint8_t {
-  FRAME_JAVA        = 1, // JIT compiled and interpreted
-  FRAME_NATIVE      = 2, // native wrapper to call C methods from Java
-  FRAME_STUB        = 3, // VM generated stubs
-  FRAME_CPP         = 4  // c/c++/... frames
+  FRAME_JAVA         = 1, // JIT compiled and interpreted
+  FRAME_JAVA_INLINED = 2, // inlined JIT compiled
+  FRAME_NATIVE       = 3, // native wrapper to call C methods from Java
+  FRAME_STUB         = 4, // VM generated stubs
+  FRAME_CPP          = 5  // C/C++/... frames
 };
 
 typedef struct {     
@@ -148,7 +145,7 @@ typedef struct {
   uint8_t comp_level;      // with 256 stating this frame is inlined (and compiled)
   uint16_t bci;            // 0 < bci < 65536
   jmethodID method_id;
-} JavaFrame;
+} JavaFrame;               // used for FRAME_JAVA and FRAME_JAVA_INLINED
 
 typedef struct {
   FrameTypeId type;     // single byte type
