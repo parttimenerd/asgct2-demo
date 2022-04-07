@@ -59,7 +59,7 @@ There are two stack walking implementations for profiling (in JFR and AsyncGetCa
 
 This JEP proposes an AsyncGetCallTrace2 API which is modeled after AsyncGetCallTrace:
 
-```
+```cpp
 void AsyncGetCallTrace2(CallTrace *trace, jint depth, void* ucontext,
                         uint32_t options);
 ```
@@ -76,7 +76,8 @@ Arguments:
 - `options`: bit set for options, currently only the lowest bit is considered, it enables (`1`) and disables (`0`) the inclusion of C/C++ frames, all other bits are considered to be `0`
 
 The `trace` struct
-```
+
+```cpp
 typedef struct {
   jint num_frames;                // number of frames in this trace
   CallFrame *frames;              // frames
@@ -88,7 +89,7 @@ The `frame_info` field in that structure can later be used to store more informa
 
 The error codes are a subset of the error codes for `AsyncGetCallTrace`, with the addition of `THREAD_NOT_JAVA` related to calling this procedure for non-Java threads:
 
-```
+```cpp
 enum Error {
   NO_JAVA_FRAME         =   0,
   NO_CLASS_LOAD         =  -1, 
@@ -105,7 +106,7 @@ enum Error {
 
 Every `CallFrame` is the element of a union, as the information stored for Java and non-Java frames differs:
 
-```
+```cpp
 typedef union {
   FrameTypeId type;     // to distinguish between JavaFrame and NonJavaFrame 
   JavaFrame java_frame;
@@ -115,7 +116,7 @@ typedef union {
 
 There a several distinguishable frame types:
 
-```
+```cpp
 enum FrameTypeId {
   FRAME_JAVA         = 1, // JIT compiled and interpreted
   FRAME_JAVA_INLINED = 2, // inlined JIT compiled
@@ -126,7 +127,7 @@ enum FrameTypeId {
 ```
 The first two types are for Java frames for which we store the following information in a struct of type `JavaFrame`:
 
-```
+```cpp
 typedef struct {     
   uint8_t type;            // frame type
   uint8_t comp_level;      // compilation level, 0 is interpreted
@@ -139,7 +140,7 @@ The `comp_level` states the compilation level of the method related to the frame
 
 Information on all other frames is stored in the `NonJavaFrame` struct:
 
-```
+```cpp
 typedef struct {
   FrameTypeId type;  // frame type
   void *pc;          // current program counter inside this frame
@@ -148,9 +149,7 @@ typedef struct {
 
 Although the API provides more information on the frames, the amount of space required per frame (e.g. 16 bytes on x86) is the same as for the original AsyncGetCallTrace API.
 
-The underlying stack walking code can be unified such that `AsyncGetCallTrace`, `AsyncGetCallTrace2`, and the JFR call stack collection become thin wrappers for a single implementation. 
-
-A prototype implementation can be found at https://github.com/parttimenerd/asgct2-demo/.
+The underlying stack walking code can be unified such that `AsyncGetCallTrace`, `AsyncGetCallTrace2`, and the JFR call stack collection become thin wrappers for a single implementation.
 
 **Alternatives**
 
