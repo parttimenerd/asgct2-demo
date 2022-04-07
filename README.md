@@ -1,5 +1,8 @@
 # New Version of AsyncGetCallTrace
 
+*This might diverge over time from the [JEP draft](https://bugs.openjdk.java.net/browse/JDK-8284289) so please consider reading the JEP draft. This repository is mainly for trying out my prototypical implementation of the JEP draft.*
+
+
 I propose to
 
 1. Replace duplicated stack walking code with unified API
@@ -23,118 +26,96 @@ reducing the amount of different stack walking code.
 
 ## AsyncGetCallTrace2
 
-The AsyncGetCallTrace call has seen increasing use in recent years
-in profilers like async-profiler.
-But it is not really an API (not exported in any header) and
-the information on frames it returns is pretty limited 
-(only the method and bci for Java frames) which makes implementing
-profilers and other tooling harder. Tools like async-profiler
-have to resort to complicated code to partially obtain the information
-that the JVM already has.
-Information that is currently hidden and impossible to obtain is
+**Summary**
 
-- whether a compiled frame is inlined (currently only obtainable for the topmost compiled frames)
-  -  although this can be obtained using JFR 
-- C frames that are not at the top of the stack
-- compilation level (C1 or C2 compiled)
+Define an efficient, secure, and supported API for asynchronous stack traces with information on Java and native frames.
 
-This information is helpful when profiling and tuning the VM for
-a given application and also for profiling code that uses
-JNI heavily.
+**Goals**
 
-Using the proposed StackWalker class, implementing a new API 
-that returns more information on frames is possible 
-as a thin wrapper over the StackWalker API [2]. 
-This also improves the maintainability as the code used
-in this API is used in multiple places and is therefore
-also better tested than the previous implementation, see 
-[1] for the implementation.
+- Provide a supported API for external profilers to obtain information on Java and native frames.
+- Unify stack walking for profiling to improve its maintainability and stability.
+- Support asynchronous usage as well as calling the API from signal handlers.
+- The implementation does not affect the performance of an unprofiled JVM.
+- Memory requirements for the collected data don't significantly increase compared to the existing AsyncGetCallTrace routine.
 
-The following describes the proposed API:
+**Non-Goals**
 
-```cpp
-void AsyncGetCallTrace2(asgct2::CallTrace *trace, jint depth, void* ucontext);
+- It is not a goal to create a new JVMTI extension.
+- The new API shall not be recommended for production usage.
+
+**Motivation**
+
+The AsyncGetCallTrace routine has seen increasing use in recent years in profilers like [async-profiler](https://github.com/jvm-profiling-tools/async-profiler) with almost all available profilers, open-source and commercial, using it. But it is only an internal API, as it is not exported in any header, and the information on frames it returns is pretty limited: Only the method and byte code index for Java frames is captured. Both make implementing profilers and related tooling harder. Tools like async-profiler have to resort to complicated code to at least partially obtain information that the JVM already has. Information that is currently hidden and impossible to get is
+
+- whether a compiled Java frame is inlined which is currently only obtainable for the topmost compiled frames
+- the compilation level of a Java frame (e.g. C1 or C2 compiled)
+- C/C++ frames that are not at the top of the stack
+
+Such data can be helpful when profiling and tuning a VM for a given application and also for profiling code that uses JNI heavily.
+
+There are two stack walking implementations for profiling (in JFR and AsyncGetCallTrace) that benefit from being unified. This improves maintainability and stability by removing redundant code and increasing coverage.
+
+**Description**
+
+This JEP proposes an AsyncGetCallTrace2 API which is modeled after AsyncGetCallTrace:
+
+```
+void AsyncGetCallTrace2(CallTrace *trace, jint depth, void* ucontext,
+                        uint32_t options);
 ```
 
-The structure of `CallTrace` is the same as the original
-`ASGCT_CallTrace` with the same error codes encoded in <= 0
-values of `num_frames`.
+This API can be called by profilers to obtain the call trace for the current thread. Calling this API from a signal-handler is safe and the new implementation will be at least as stable as
+AsyncGetCallTrace or the JFR stack walking code.
+The VM fills in information about the frames and the number of frames. The caller of the API should allocate the `CallTrace` structure with enough memory for the requested stack depth. 
 
-```cpp
+Arguments:
+
+- `trace`: buffer for structured data to be filled in by the JVM
+- `depth`: maximum depth of the call stack trace
+- `ucontext`: optional `ucontext_t` of the current thread when it was interrupted
+- `options`: bit set for options, currently only the lowest bit is considered, it enables (`1`) and disables (`0`) the inclusion of C/C++ frames, all other bits are considered to be `0`
+
+The `trace` struct
+```
 typedef struct {
-  JNIEnv *env_id;                   // Env where trace was recorded
-  jint num_frames;                  // number of frames in this trace
-  CallFrame *frames;                // frames
-  void* frame_info;                 // more information on frames
+  jint num_frames;                // number of frames in this trace
+  CallFrame *frames;              // frames
+  void* frame_info;               // more information on frames
 } CallTrace;
 ```
+is filled by the VM. Its `num_frames` field contains the actual number of frames in the `frames` array or an error code. 
+The `frame_info` field in that structure can later be used to store more information but is currently supposed to be NULL.
 
-The only difference is that the `frames` array also contains
-information on C frames and the field `frame_info`.
-The `frame_info` is currently null and can later be used
-for extended information on each frame, being an array with
-an element for each frame. But the type of the
-elements in this array is implementation specific.
-This akin to `compile_info` field in JVMTI's CompiledMethodLoad 
-[3] and used for extending the information returned by the
-API later.
+The error codes are a subset of the error codes for `AsyncGetCallTrace`, with the addition of `THREAD_NOT_JAVA` related to calling this procedure for non-Java threads:
 
-### Protoype
+```
+enum Error {
+  NO_JAVA_FRAME         =   0,
+  NO_CLASS_LOAD         =  -1, 
+  GC_ACTIVE             =  -2,    
+  UNKNOWN_NOT_JAVA      =  -3,
+  NOT_WALKABLE_NOT_JAVA =  -4,
+  UNKNOWN_JAVA          =  -5,
+  UNKNOWN_STATE         =  -7,
+  THREAD_EXIT           =  -8,
+  DEOPT                 =  -9,
+  THREAD_NOT_JAVA       = -10
+};
+```
 
-Currently `CallFrame` is implemented in the prototype [4] as
+Every `CallFrame` is the element of a union, as the information stored for Java and non-Java frames differs:
 
-```cpp
-typedef struct {
-  void *machine_pc;           // program counter, for C and native frames (frames of native methods)
-  uint8_t type;               // frame type (single byte)
-  uint8_t comp_level;         // highest compilation level of a method related to a Java frame
-  // information from original CallFrame
-  jint bci;                   // bci for Java frames
-  jmethodID method_id;        // method ID for Java frames
+```
+typedef union {
+  FrameTypeId type;     // to distinguish between JavaFrame and NonJavaFrame 
+  JavaFrame java_frame;
+  NonJavaFrame non_java_frame;
 } CallFrame;
 ```
 
-The `FrameTypeId` is based on the frame type in JFRStackFrame:
+There a several distinguishable frame types:
 
-```cpp
-enum FrameTypeId {
-  FRAME_INTERPRETED = 0, 
-  FRAME_JIT         = 1, // JIT compiled
-  FRAME_INLINE      = 2, // inlined JITed methods
-  FRAME_NATIVE      = 3, // native wrapper to call C methods from Java
-  FRAME_CPP         = 4  // c/c++/... frames, stub frames have CompLevel_all
-};
 ```
-
-The `comp_level` states the compilation level of the method related to the frame
-with higher numbers representing "more" compilation. `0` is defined as
-interpreted. It is modeled after the `CompLevel` enum in `compiler/compilerDefinitions`:
-
-```cpp
-// Enumeration to distinguish tiers of compilation
-enum CompLevel {
-  // ...
-  CompLevel_none              = 0,         // Interpreter
-  CompLevel_simple            = 1,         // C1
-  CompLevel_limited_profile   = 2,         // C1, invocation & backedge counters
-  CompLevel_full_profile      = 3,         // C1, invocation & backedge counters + mdo
-  CompLevel_full_optimization = 4          // C2 or JVMCI
-};
-```
-
-The traces produced by this prototype are fairly large
-(each frame requires 24 is instead of 16 bytes on 64 bit systems) and some data is
-duplicated.
-The reason for this is that it simplified the extension of async-profiler
-for the prototype, as it only extends the data structures of
-the original AsyncGetCallTrace API without changing the original fields.
-
-### Proposal
-
-But packing the information and reducing duplication is of course possible
-if we step away from the former constraint:
-
-```cpp
 enum FrameTypeId {
   FRAME_JAVA         = 1, // JIT compiled and interpreted
   FRAME_JAVA_INLINED = 2, // inlined JIT compiled
@@ -142,35 +123,47 @@ enum FrameTypeId {
   FRAME_STUB         = 4, // VM generated stubs
   FRAME_CPP          = 5  // C/C++/... frames
 };
+```
+The first two types are for Java frames for which we store the following information in a struct of type `JavaFrame`:
 
+```
 typedef struct {     
   uint8_t type;            // frame type
-  uint8_t comp_level;
+  uint8_t comp_level;      // compilation level, 0 is interpreted
   uint16_t bci;            // 0 < bci < 65536
   jmethodID method_id;
 } JavaFrame;               // used for FRAME_JAVA and FRAME_JAVA_INLINED
-
-typedef struct {
-  FrameTypeId type;     // single byte type
-  void *machine_pc;
-} NonJavaFrame;         // used for FRAME_NATIVE, FRAME_STUB and FRAME_CPP
-
-typedef union {
-  FrameTypeId type;     // to distinguish between JavaFrame and NonJavaFrame
-  JavaFrame java_frame;
-  NonJavaFrame non_java_frame;
-} CallFrame;
 ```
 
-This uses the same amount of space per frame (16 bytes) as the original but encodes far more information.
+The `comp_level` states the compilation level of the method related to the frame with higher numbers representing "more" compilation. 0 is defined as interpreted. It is modeled after the `CompLevel` enum in `compiler/compilerDefinitions` but is dependent on the used compiler infrastructure.
 
-[1] https://github.com/parttimenerd/jdk/blob/parttimenerd_asgct2/src/hotspot/share/jfr/recorder/stacktrace/stackWalker.hpp
+Information on all other frames is stored in the `NonJavaFrame` struct:
 
-[2] https://github.com/parttimenerd/jdk/blob/parttimenerd_asgct2/src/hotspot/share/prims/asgct2.cpp****
+```
+typedef struct {
+  FrameTypeId type;  // frame type
+  void *pc;          // current program counter inside this frame
+} NonJavaFrame;  
+```
 
-[3] https://docs.oracle.com/javase/8/docs/platform/jvmti/jvmti.html#CompiledMethodLoad
+Although the API provides more information on the frames, the amount of space required per frame (e.g. 16 bytes on x86) is the same as for the original AsyncGetCallTrace API.
 
-[4] https://github.com/parttimenerd/jdk/blob/parttimenerd_asgct2/src/hotspot/share/prims/asgct2.hpp
+The underlying stack walking code can be unified such that `AsyncGetCallTrace`, `AsyncGetCallTrace2`, and the JFR call stack collection become thin wrappers for a single implementation. 
+
+A prototype implementation can be found at https://github.com/parttimenerd/asgct2-demo/.
+
+**Alternatives**
+
+Keep AsyncGetCallTrace as is, meaning a lack of maintenance and stability for a widely used de-facto API.
+
+**Risks and Assumptions**
+
+Returning information on C/C++ frames leaks implementation details, but this is also true for the Java frames of AsyncGetCallTrace as they leak details of the implementation of standard library files and include native wrapper frames.
+
+**Testing**
+
+Unifying the existing profiling-related stack walking code allows for testing it more efficiently by combining the existing tests.
+The implementation of this JEP will also add new stress tests to find rare stability problems on all supported platforms. The idea is to run the profiling on a set of example programs (for example the dacapo and renaissance benchmark suites) repeatedly with small profiling intervals (<= 0.1ms).
 
 
 ## Demo
