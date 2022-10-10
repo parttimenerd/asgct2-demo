@@ -1,8 +1,8 @@
 [submodule "jdk"]
 	path = jdk
 	url = https://github.com/parttimenerd/jdk
-	branch = parttimenerd_asgct2
+	branch = parttimenerd_asgst
 [submodule "async-profiler"]
 	path = async-profiler
-	url = https://github.com/SAP/async-profiler
-	branch = parttimenerd_asgct2
+	url = https://github.com/parttimenerd/async-profiler
+	branch = parttimenerd_asgst
