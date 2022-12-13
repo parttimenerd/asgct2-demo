@@ -28,7 +28,7 @@ test -e dacapo.jar || wget https://downloads.sourceforge.net/project/dacapobench
 *With an interval of 500us (0.5ms), more information on the arguments in the [async-profiler](https://github.com/parttimenerd/async-profiler/tree/parttimenerd_asgct2).
 Use another benchmark like tomcat instead of jython, if the flame graph misses the bottom frames.*
 
-This resulted in a flame graph like (click on the image to get to the HTML flame graph) before I rebuild the async-profiler fork:
+This resulted in a flame graph like (click on the image to get to the HTML flame graph):
 
 [![Crop of the generated flame graph for jython dacapo benchmark](img/jython.png)](https://htmlpreview.github.io/?https://github.com/parttimenerd/asgct2-demo/blob/main/img/jython.html)
 
@@ -36,10 +36,20 @@ This resulted in a flame graph like (click on the image to get to the HTML flame
 
 The usage of the new AsyncGetStackTrace gives us the following additions to a normal
 async-profiler flame graph: Information on the compilation stage (C1 vs C2 compiler),
-inlining information for non-top frames, information on c frames starting with `_pthread_start`
-up to the first Java frame is not yet used, but planned to be used. This information was previously unobtainable by async-profiler
+inlining information for non-top frames, information on C frames starting with `_pthread_start`
+up to the first Java frame and C frames between Java frames. This information was previously unobtainable by async-profiler
 (or any other profiler using just JFR or AsyncGetCallTrace).
 
-The same flame graph using the old AsyncGetCallTrace can be found [here](img/jython_old.png) 
-(using [async-profiler](https://github.com/SAP/async-profiler/tree/distinguish_inlined_frames2)
-that includes the hover texts).
+The same flame graph using the old AsyncGetCallTrace can be generated using the following:
+
+```sh
+test -e dacapo.jar || wget https://downloads.sourceforge.net/project/dacapobench/9.12-bach-MR1/dacapo-9.12-MR1-bach.jar -O dacapo.jar
+test -e ap-loader.jar || wget https://github.com/jvm-profiling-tools/ap-loader/releases/latest/download/ap-loader-all.jar -O ap-loader.jar
+java -javaagent:./ap-loader.jar=start,flat=10,traces=1,interval=500us,event=cpu,flamegraph,file=flame_old.html -jar dacapo.jar jython
+```
+
+This resulted in a flame graph like (click on the image to get to the HTML flame graph):
+
+[![Crop of the generated flame graph for jython dacapo benchmark](img/jython_old.png)](https://htmlpreview.github.io/?https://github.com/parttimenerd/asgct2-demo/blob/main/img/jython_old.html)
+
+Showing the stark difference in the amount of available information.
