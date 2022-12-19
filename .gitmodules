@@ -5,4 +5,4 @@
 [submodule "jdk"]
 	path = jdk
   url = git@github.com:parttimenerd/jdk-sandbox
-  branch = asgct2
+  branch = asgst
