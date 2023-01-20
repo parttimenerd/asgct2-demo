@@ -22,9 +22,10 @@ For example, to run a [dacapo](https://github.com/dacapobench/dacapobench) bench
 
 ```sh
 test -e dacapo.jar || wget https://downloads.sourceforge.net/project/dacapobench/9.12-bach-MR1/dacapo-9.12-MR1-bach.jar -O dacapo.jar
-
-./run.sh flat=10,traces=1,interval=500us,event=cpu,flamegraph,file=flame.html -jar dacapo.jar jython
+./run.sh flat=10,traces=1,interval=500us,event=cpu,flamegraph,file=flame.html -XX:+UnlockDiagnosticVMOptions -XX:+DebugNonSafepoints -jar dacapo.jar jython
+open flame.html
 ```
+
 *With an interval of 500us (0.5ms), more information on the arguments in the [async-profiler](https://github.com/parttimenerd/async-profiler/tree/parttimenerd_asgct2).
 Use another benchmark like tomcat instead of jython, if the flame graph misses the bottom frames.*
 
@@ -46,6 +47,7 @@ The same flame graph using the old AsyncGetCallTrace can be generated using the 
 test -e dacapo.jar || wget https://downloads.sourceforge.net/project/dacapobench/9.12-bach-MR1/dacapo-9.12-MR1-bach.jar -O dacapo.jar
 test -e ap-loader.jar || wget https://github.com/jvm-profiling-tools/ap-loader/releases/latest/download/ap-loader-all.jar -O ap-loader.jar
 java -javaagent:./ap-loader.jar=start,flat=10,traces=1,interval=500us,event=cpu,flamegraph,file=flame_old.html -jar dacapo.jar jython
+open flame_old.html
 ```
 
 This resulted in a flame graph like (click on the image to get to the HTML flame graph):
