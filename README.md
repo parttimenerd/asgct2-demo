@@ -10,7 +10,7 @@ Either build the JDK in the folder `jdk` as you would usually do
 and build the async-profiler in the folder 
 `async-profiler` via make or run `./build.sh`.
 Be sure to install the required dependencies (you will probably
-see related error messages if you don't).
+see related error messages if you don't) and use a current JDK (19 or 20).
 
 *It is based on OpenJDK head but the changes should be easy to backport to previous versions.*
 
